@@ -1,0 +1,38 @@
+%% Reference architecture for a local-capture AI meeting note-taker.
+%% Five stages: Capture -> Transcribe -> Structure -> Knowledge -> Share / Agent.
+%% The dashed boundary is the trust boundary discussed in docs/06-privacy-and-threat-model.md.
+%% Render with any Mermaid-compatible viewer, e.g. https://mermaid.live
+
+flowchart LR
+    subgraph mac["User's machine (local)"]
+        direction LR
+        cap["1 · Capture<br/>system audio + microphone<br/>platform detection or press-to-record"]
+        seg["Audio segments<br/>+ wall-clock timestamps<br/>(local spool)"]
+        tr["2 · Transcript<br/>immutable · timestamped<br/>speaker-labelled"]
+        st["3 · Structure<br/>summary · my action items · waiting-on<br/>every bullet cites a transcript span"]
+        kb[("4 · Knowledge<br/>Markdown files · bi-directional links<br/>local semantic index")]
+        qa["Ask anything<br/>answers carry sources"]
+        mcp["Local MCP server<br/>read-only tools for coding agents"]
+        share["5 · Share<br/>explicit · per-recipient<br/>read-only link"]
+    end
+
+    subgraph cloud["Cloud (stateless processing, no retention)"]
+        direction TB
+        asr["Speech service<br/>transcribes a segment, returns text<br/>does not keep the audio"]
+        llm["Language model service<br/>drafts notes from the transcript<br/>does not keep the transcript"]
+    end
+
+    cap --> seg
+    seg -- "upload for transcription (TLS)" --> asr
+    asr -- "text segments" --> tr
+    tr -- "transcript + instructions" --> llm
+    llm -- "draft notes" --> st
+    st --> kb
+    kb --> qa
+    kb --> mcp
+    st --> share
+
+    classDef local fill:#f6f8fa,stroke:#57606a,color:#24292f;
+    classDef remote fill:#fff8f0,stroke:#bc4c00,color:#24292f;
+    class cap,seg,tr,st,kb,qa,mcp,share local;
+    class asr,llm remote;
